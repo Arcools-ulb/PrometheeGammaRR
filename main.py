@@ -15,12 +15,15 @@ M = 10   #number of criteria
 X = 0
 
 def open_top15_SHA2014(DTM,DTM_PRIME):
+    """
+    load a existing file, parse and create objects(DTM and DTM_PRIME)
+    """
     f = open("Data/Top15_SHA2014.csv", "r")
     list_name = f.readline().split(",")[1:]
     table = []
     for i in range(15):# number of alternatives. TO CHANGE
         table.append(f.readline().split(",")[1:])
-
+    #Get all needed informations
     list_weights = f.readline().split(",")[1:]
     list_type_fonction = f.readline().split(",")[1:]
     list_crit_P = f.readline().split(",")[1:]
@@ -36,36 +39,41 @@ def open_top15_SHA2014(DTM,DTM_PRIME):
     DTM_PRIME.createCriteria(None, list_name, list_weights, list_type_fonction, list_crit_P, list_crit_Q)
     return DTM, DTM_PRIME, table
 
-def create_random_tablor():
+def create_random_tablor():#
+    """
+    Generate a random evaluation table
+    """
     table = []
     table_info = []
-    for i in range(N):
+    for i in range(N):#NB of alternatives
         table.append([])
 
-    for m in range(M):
+    for m in range(M):#Criteriums
         max=random.randint(100,1000)
         table_info.append(["C" +str(m) ,max])
         for n in range(N):
             table[n].append(round(random.uniform(float(max), float(max*2)),2))
-        #table[-1].append(0)
-        #table[-1].append(10000)
-        #table[-1].append(max + max/2)
-    #print(table)
     return table, table_info
 
 
 
-def calculeWeight():
+def calculeWeight():#Generate a set weigts based on the number of criteriums
+    """
+    Generate a set of weights based on the number of criteria
+    """
     list_weights = []
     max_weight = 0
     for i in range(M):
         weight = random.randint(0, 100)
         max_weight += weight
         list_weights.append(weight)
-    list_weights = np.divide(list_weights, max_weight)
-    return list_weights #[1,0,0]
+    list_weights = np.divide(list_weights, max_weight) #normalize
+    return list_weights
 
 def setupDataTabModel(DTM,DTM_PRIME,table,table_info, weight, type_function):
+    """
+    Create the objects(DTM and DTM_PRIME) that contains all needed informations
+    """
     for i in range(len(table)):
         DTM.createAlternative(None,"A"+ str(i), table[i])
         if i < len(table)-1:
@@ -76,7 +84,7 @@ def setupDataTabModel(DTM,DTM_PRIME,table,table_info, weight, type_function):
     list_crit_P=[]
     list_crit_Q=[]
 
-    for i in range(len(table_info)):
+    for i in range(len(table_info)): #depending on the used fonction, setup the parameters P and Q.
         list_name.append(table_info[i][0])
         if type_function == 4:
             list_type_fonction.append(4)
@@ -96,89 +104,11 @@ def setupDataTabModel(DTM,DTM_PRIME,table,table_info, weight, type_function):
     return DTM, DTM_PRIME
 
 
-def testBorne(PG, PG_PRIME):
-    PG_matrix_gamma = PG.getMatrixGamma()
-    PG_PRIME_matrix_gamma = PG_PRIME.getMatrixGamma()
-    # relation
-    PG_WEIGHT = PG_PRIME.getMatrixGammaWeight()
-    # print(PG_WEIGHT)
-    result = []
-    error = 0
-    for i in range(len(PG_PRIME_matrix_gamma)):
-        for j in range(len(PG_PRIME_matrix_gamma[i])):
-            nb = 0
-            for m in range(len(PG_WEIGHT[i][j])):
-                nb += PG_WEIGHT[i][j][m] * max(1, 2 * PG.dataTabModel.get_pi_c_ij(i, j, m))
-            nb = nb / (N - 1)
-            if -nb <= PG_matrix_gamma[i][j] - PG_PRIME_matrix_gamma[i][j] <= nb:
-                result.append([PG_matrix_gamma[i][j] - PG_PRIME_matrix_gamma[i][j], nb])
-            else:
-                error = 1
-                print(nb, PG_matrix_gamma[i][j] - PG_PRIME_matrix_gamma[i][j],
-                      nb >= PG_matrix_gamma[i][j] - PG_PRIME_matrix_gamma[i][j])
-                raise ValueError('Borne trop grande !!!')
-    return result, error
-
-def gammaBorneVerification(PG, PG_PRIME):
-    #PG.getMatrixGamma(), PG_PRIME.getMatrixGamma(),PG.getMatrixResults(),PG_PRIME.getMatrixResults(), PG_PRIME.getMatrixGammaWeight(),PG_PRIME
-    PG_matrix_gamma = PG.getMatrixGamma()
-    PG_PRIME_matrix_gamma = PG_PRIME.getMatrixGamma()
-    #relation
-    #PG_RESULT = PG.getMatrixResults()
-    #PG_PRIME_RESULT = PG_PRIME.getMatrixResults()
-    PG_WEIGHT = PG_PRIME.getMatrixGammaWeight()
-    #print(PG_WEIGHT)
-    result = []
-    error = 0
-    for i in range(len(PG_PRIME_matrix_gamma)):
-        for j in range(len(PG_PRIME_matrix_gamma[i])):
-            if i != j:
-                nb = 0
-                for m in range(len(PG_WEIGHT[i][j])):
-                    #print("iCIIIIC", PG.dataTabModel.get_pi_c_ij(i,j,m))
-                    #print("------------------------------")
-                    #print(" Poids", PG_WEIGHT[i][j])
-                    #print(" Pc", PG.dataTabModel.get_pi_c_ij(i,j,m))
-                    #print("max", max(1, 2 * PG.dataTabModel.get_pi_c_ij(i, j, m)))
-                    nb += PG_WEIGHT[i][j][m]* max(1, 2*PG.dataTabModel.get_pi_c_ij(i,j,m))
-                nb = nb/(N-1)
-                print(nb,PG_matrix_gamma[i][j] - PG_PRIME_matrix_gamma[i][j] , nb >= PG_matrix_gamma[i][j] - PG_PRIME_matrix_gamma[i][j])
-                if -nb <= PG_matrix_gamma[i][j] - PG_PRIME_matrix_gamma[i][j] <= nb:
-                    #print(PG[i][j] - PG_PRIME[i][j], -2* PG_WEIGHT[i][j]/(N-1), -2/(N-1))
-                    result.append([PG_matrix_gamma[i][j] - PG_PRIME_matrix_gamma[i][j],nb])
-                else:
-                    error = 1
-                    print(nb,PG_matrix_gamma[i][j] - PG_PRIME_matrix_gamma[i][j] , nb >= PG_matrix_gamma[i][j] - PG_PRIME_matrix_gamma[i][j])
-                    raise ValueError('Borne trop grande !!!')
-    return result, error
 
 
-def plotResult(result, type_to_analyse):
-    number = []
-    gamma_minus_gamma_prime = []
-    estimation = []
-    for i in range(len(result)):
-        number.append(i)
-        gamma_minus_gamma_prime.append(abs(result[i][0]))
-        estimation.append(abs(result[i][1]))
-    plt.bar(number,estimation,color='blue')
-    plt.bar(number, gamma_minus_gamma_prime ,color='red')
-    #plt.scatter(gamma_minus_gamma_prime, number)
-    #naming
-    plt.legend(['Estimation', 'Déplacement réel'])
-    plt.xlabel('Déplacement de GAMMA')
-    plt.show()
-
-
-def plot(Value, relation):
-    plt.scatter(Value, Value, color='blue')
-    # plt.scatter(gamma_minus_gamma_prime, number)
-    # naming
-    plt.title("Relation : "+relation)
-    plt.xlabel('Difference entre la borne et gamma')
-    plt.ylabel('Difference entre la borne et gamma')
-    plt.show()
-
+"""
+Set of function to plot result.
+"""
 
 def print_RR_stat(calculedRR, confirmedRR):
     relation = ["I", "J", "Pi", "Pj"]
@@ -221,12 +151,10 @@ def plot_gammaij_gamma_ji(gamma_ij, gamma_ji ,color):
     plt.scatter(gamma_ij, gamma_ji ,color=color,s=1)
 
     # Adding labels and title
-    #plt.title("Fonction ")
     plt.xlim(0, 1.25)
     plt.ylim(0, 1.25)
     plt.xlabel(r"$\gamma_{ij}$")
     plt.ylabel(r"$\gamma_{ji}$")
-    #plt.legend()
     # Display the plot
     plt.show()
 
@@ -238,20 +166,18 @@ def plot_gammaij_gamma_ji_with_direction(gamma_ij, gamma_ji ,gamma_ij_PRIME, gam
     plt.plot([0.35, 2], [0.35, 1.175], color='black', linewidth=1.5, label='Reference Line')
     for i in range(len(gamma_ij_PRIME)):
         plt.plot([gamma_ij[i], gamma_ij_PRIME[i]], [gamma_ji[i], gamma_ji_PRIME[i]], color=color[i], linewidth=0.5, label='Reference Line')
-    #plt.scatter(gamma_ij, gamma_ji ,color=color,s=1)
 
     # Adding labels and title
-    #plt.title("Fonction ")
     plt.xlim(0, 1.25)
     plt.ylim(0, 1.25)
     plt.xlabel(r"$\gamma_{ij}$")
     plt.ylabel(r"$\gamma_{ji}$")
-    #plt.legend()
     # Display the plot
     plt.show()
 
 
 def main():
+    #Calculation about rank reversal is computed and if is confirmed after one alternative less.
     calculedRR = [[0, 0, 0,0] for k in range(4)]  # I, J, Pi, Pj
     confirmedRR = [[0, 0, 0,0] for k in range(4)]  # I, J, Pi, Pj
     RRDistanceBorne =[]
@@ -265,46 +191,49 @@ def main():
     direction_gamma = [0,0,0] #both negative, both positive, neg and pos
 
     x = 0
-    type_to_analyse = [1]#, 4, 5]
+    type_to_analyse = [1]#, 4, 5] #List of fonction to use
     diff_borne_gamma = [[] for _ in range(len(type_to_analyse))]
     borne = [[] for _ in range(len(type_to_analyse))]
     gamma = [[] for _ in range(len(type_to_analyse))]
     while (x != 50):
-        #print("#################NOUVELLE BOUCLE##################")
         print(x)
         table, table_info = create_random_tablor()
         weight = calculeWeight()
         for i in range(len(type_to_analyse)):
+            #Classical computation to get results
+
+
             DTM, DTM_PRIME = DataTabModel(), DataTabModel()
             RTM ,RTM_PRIME = ResultTabModel(None), ResultTabModel(None)
             PG,PG_PRIME = PrometheeGamma.PrometheeGamma(), PrometheeGamma.PrometheeGamma()
             DTM, DTM_PRIME = setupDataTabModel(DTM,DTM_PRIME, table, table_info, weight,type_to_analyse[i])
+            # DTM is the first table
             PG.setDataTabModel(DTM)
             PG.setResultTabModel(RTM)
             PG.computeAll()
-
-
+            # DTM_PRIME is the table with one less alternative
             PG_PRIME.setDataTabModel(DTM_PRIME)
             PG_PRIME.setResultTabModel(RTM_PRIME)
             PG_PRIME.computeAll()
 
-            #plotResult(gammaBorneVerification(PG,PG_PRIME)[0], "")
+            # Take the result and compute the differences between 2 tables
             RR=PrometheeGamma_rankReversal(N,PG, PG_PRIME,RTM.getTi(),RTM.getTj(),RTM.getPf())
-
-
             RR.isRRCalculated()
+
+            #get datas from the actual worktable and store such that it will be used to plot some behaviours
             data_diff_borne_deplaReel, data_deplReel, data_borne = RR.get_data_to_plot()
             diff_borne_gamma[i] += data_diff_borne_deplaReel
             gamma[i] += data_deplReel
             borne[i] += data_borne
-            #RR.loopOnRelation()
             RRDistanceBorne.extend(RR.borneMinusRealDeplacement)
             tmp1,tmp2= RR.estimationAndCalculationOfRR()
-
+            # If a RR has been calculed and has occured
             for k in range(len(calculedRR)):
                 for l in range(len(calculedRR[k])):
                     calculedRR[k][l] += tmp1[k][l]
                     confirmedRR[k][l] += tmp2[k][l]
+
+            # some data to have nice plot
             for k in range(len(RR.PG_matrix_gamma) - 1):
                 for l in range(i+1,len(RR.PG_matrix_gamma[k]) - 1):
 
@@ -318,6 +247,8 @@ def main():
                     gamma_ji.append(RR.PG_matrix_gamma[l][k])
                     gamma_ij_PRIME.append(RR.PG_PRIME_matrix_gamma[k][l])
                     gamma_ji_PRIME.append(RR.PG_PRIME_matrix_gamma[l][k])
+
+            #To get the direction of the gamma during the withdrawal of an alternative
             for k in range(len(RR.PG_matrix_gamma) - 1):
                 for l in range(i + 1, len(RR.PG_matrix_gamma[k]) - 1):
                     if RR.PG_matrix_gamma[k][l] > RR.PG_PRIME_matrix_gamma[k][l] and RR.PG_matrix_gamma[l][k] > RR.PG_PRIME_matrix_gamma[l][k]:
@@ -326,13 +257,9 @@ def main():
                         direction_gamma[1] += 1
                     else:
                         direction_gamma[2] += 1
-            #result, error = gammaBorneVerification(PG, PG_PRIME)
-            #RR.isRelationChange()
-            #print('ici',PG_PRIME.dataTabModel.get_pi_ij(0,2)/N-1)
-            #print('ici', PG.dataTabModel.get_pi_ij(0, 2) / N - 1)
-            #print(PG.getMatrixGamma())
-        #print(PG_PRIME.getMatrixGamma())
         x += 1
+
+    #After a number X of test, plot the information/shapes.
     print("gamma direction: ",direction_gamma)
     print_RR_stat(calculedRR,confirmedRR)
     plot_difference_gamma_estimation(diff_borne_gamma)
@@ -344,7 +271,7 @@ def main():
 
     return 0
 
-def main_top15():
+def main_top15(): #Same fonction as main but for existing files
     calculedRR = [[0, 0, 0, 0] for k in range(4)]  # I, J, Pi, Pj
     confirmedRR = [[0, 0, 0, 0] for k in range(4)]  # I, J, Pi, Pj
     RRDistanceBorne = []
@@ -362,7 +289,6 @@ def main_top15():
     PG_PRIME.setResultTabModel(RTM_PRIME)
     PG_PRIME.computeAll()
 
-    # plotResult(gammaBorneVerification(PG,PG_PRIME)[0], "")
     RR = PrometheeGamma_rankReversal(N, PG, PG_PRIME, RTM.getTi(), RTM.getTj(), RTM.getPf())
 
     RR.isRRCalculated()
@@ -379,7 +305,7 @@ def main_top15():
 
 random.seed(1)
 main()
-#main_top15()
+#main_top15() #Never used
 
 
 

@@ -1,8 +1,5 @@
-from ResultTabModel import ResultTabModel
 import math
 from shapely.geometry import Point, LineString #use to calculate distance between points and segments
-import numpy as np
-import matplotlib.pyplot as plt
 class PrometheeGamma_rankReversal:
     """
     A class with the model of the result tab. It contains the three new parameters of Promethee Gamma.
@@ -42,6 +39,9 @@ class PrometheeGamma_rankReversal:
 
 
     def computeBorneGamma(self):
+        """
+        Compute the maximum possible movement of gamma when we remove 1 alternative
+        """
         PG_WEIGHT = self.PG_PRIME.getMatrixGammaWeight()
         self.PG_estimation = []
         self.PG_estimation_positif=[]
@@ -52,16 +52,10 @@ class PrometheeGamma_rankReversal:
             estimation_global = []
             for j in range(len(self.PG_PRIME_matrix_gamma[i])):
                 nb = 0
-                #print("----------")
-                #print(i, j)
                 for m in range(len(PG_WEIGHT[i][j])):
-                    #print(PG_WEIGHT[i][j][m])
-                    #print(self.PG.dataTabModel.getAlternative(i).getEvaluation(m))
-                    #print(self.PG.dataTabModel.getAlternative(j).getEvaluation(m))
                     nb += PG_WEIGHT[i][j][m] * max(1, 2 * self.PG.dataTabModel.get_pi_c_ij(i, j, m))
 
                 nb = (nb / (self.N - 2) - self.PG_matrix_gamma[i][j]/(self.N-2))
-                #print(nb)
                 estimation_positif.append(nb)
                 estimation_negatif.append(- self.PG_matrix_gamma[i][j]/(self.N-2))
                 # Python has a problem with float rounding
@@ -73,6 +67,9 @@ class PrometheeGamma_rankReversal:
             self.PG_estimation.append(estimation_global)
 
     def computeBorneGamma_forPP(self):
+        """
+        Compute the maximum possible movement of gamma when we remove 1 alternative but for the case PP
+        """
         PG_WEIGHT = self.PG_PRIME.getMatrixGammaWeight()
         self.PG_estimation_forPP=[]
 
@@ -85,12 +82,15 @@ class PrometheeGamma_rankReversal:
                 # Python has a problem with float rounding
                 # which propagates through calculations (depending on the number of alternatives)
                 # We add a small number to compensate
-                nb = (nb / (self.N - 1)) + 0.00000000000001#((nb/(self.N - 2))-(self.PG_matrix_gamma[i][j]/(self.N - 2))) +0.0000000000000001
+                nb = (nb / (self.N - 1)) + 0.00000000000001
                 tmp.append(nb)
             self.PG_estimation_forPP.append(tmp)
 
 
     def isBorneRight(self):
+        """
+        check if the movement of gamma has been predicted(smaller that the borne we calculed)
+        """
         result = []
         for i in range(len(self.PG_PRIME_matrix_gamma)):
             for j in range(len(self.PG_PRIME_matrix_gamma[i])):
@@ -101,18 +101,17 @@ class PrometheeGamma_rankReversal:
                     print("Gamma number: ", i, j)
                     print("Gamma", self.PG_matrix_gamma[i][j], " |GMAA PRIME: ", self.PG_PRIME_matrix_gamma[i][j])
                     print("Real Movement: ", self.PG_matrix_gamma[i][j] - self.PG_PRIME_matrix_gamma[i][j])
-                    print("Old_Estimation/estimation for PP relation: ", self.PG_estimation_forPP[i][j])
-                    print("New_estimation_positif: ", self.PG_estimation_positif[i][j])
-                    print("New_estimation_negatif: ", self.PG_estimation_negatif[i][j])
+                    print("Estimation for PP relation: ", self.PG_estimation_forPP[i][j])
+                    print("Estimation_positif: ", self.PG_estimation_positif[i][j])
+                    print("Estimation_negatif: ", self.PG_estimation_negatif[i][j])
                     print("Générale_Estimation: ", self.PG_estimation[i][j])
-                    print("---------------------------------------------------------------")
-                    print("Is New better than Old ?: ", self.PG_estimation[i][j] >= self.PG_estimation_forPP[i][j])
-                    print("Is new good ?: ",
-                          self.PG_matrix_gamma[i][j] - self.PG_PRIME_matrix_gamma[i][j] <= self.PG_estimation[i][j])
                     raise ValueError('Estimation borne is too small')
         return result
 
-    def get_data_to_plot(self):
+    def get_data_to_plot(self):#
+        """
+        Function that group and return the data for the plotting phase
+        """
         data_diff_borne_deplaReel = []
         data_borne = []
         data_deplReel = []
@@ -126,22 +125,23 @@ class PrometheeGamma_rankReversal:
 
 
 
-    def isRRCalculated(self):
+    def isRRCalculated(self):#
+        """
+       verify if a rank reversal that occured has been predicted
+        """
         #loop on the relation
         for i in range(len(self.PG_PRIME_RESULT)):
             for j in range(i,len(self.PG_PRIME_RESULT[i])):
                 #check if relation changed
                 if self.PG_RESULT[i][j] != self.PG_PRIME_RESULT[i][j]:
                     if self.specificRankReversal(i,j) == False:#Check if RR has been predictied
-                        print(self.PG_RESULT[i][j], self.PG_PRIME_RESULT[i][j])
-                        print("Gammaij", self.PG_matrix_gamma[i][j],"Gammaji",self.PG_matrix_gamma[j][i])
-                        print("Gamma_primeij", self.PG_PRIME_matrix_gamma[i][j],"Gamma_primeji", self.PG_PRIME_matrix_gamma[j][i])
-                        print("Gamma_estimation", self.PG_estimation[i][j],"True deviation", self.PG_matrix_gamma[i][j]-self.PG_PRIME_matrix_gamma[i][j])
-                        print("Gamma_prime_estimation", self.PG_estimation[j][i],"True deviation", self.PG_matrix_gamma[j][i]-self.PG_PRIME_matrix_gamma[j][i])
                         raise ValueError('A RR has not been predicted/calculated')
 
 
-    def extractRelation(self,i,j):
+    def extractRelation(self,i,j):#
+        """
+        Extract the right relation between 2 alternatives i and j
+        """
         relation = self.PG_RESULT[i][j].split(" ")[1]
         relation_bis = self.PG_PRIME_RESULT[i][j].split(" ")[1]
         if relation == "P":
@@ -161,6 +161,10 @@ class PrometheeGamma_rankReversal:
         return relation, relation_bis
 
     def estimationAndCalculationOfRR(self):
+        """
+        check if the rank reversal can happens and if it is confirmed after one alternative less.
+        """
+        #
         calculedRR = [[0,0,0,0] for k in range(4)]  # I, J, Pi,Pj
         confirmedRR = [[0, 0, 0 , 0] for k in range(4)]  # I, J, Pi, Pj
         list=["I","J","Pi", "Pj"]
@@ -176,6 +180,10 @@ class PrometheeGamma_rankReversal:
 
 
     def calculateRankReversaleach(self,i,j,relation,relation_bis):
+        """
+        Count the number of occuring rank reversal on alternative i,j
+        """
+        #
         numberOfRR =0
         if relation == "I" and relation_bis =="J":
             numberOfRR += self.RR_IJ(i,j)
@@ -206,6 +214,9 @@ class PrometheeGamma_rankReversal:
         return numberOfRR
 
     def specificRankReversal(self,i,j):
+        """
+        Giving 2 alternatives where the rank reversal occured, check if it has been calculed
+        """
         relation_PG, relation_PG_PRIME =self.PG_RESULT[i][j].split(" ")[1], self.PG_PRIME_RESULT[i][j].split(" ")[1]
 
         if relation_PG == "P" and relation_PG_PRIME == "P":
@@ -236,24 +247,17 @@ class PrometheeGamma_rankReversal:
                     return self.RR_JPji(i, j)
 
 
-    def RR_PijPji_version_1(self,i,j):
-        gammaij = self.PG_matrix_gamma[i][j]
-        gammaji = self.PG_matrix_gamma[j][i]
-        if gammaij >gammaji:
-            DeltaGamma = self.PG_estimation[i][j]
-        elif gammaij == gammaji:
-            DeltaGamma =max(self.PG_estimation[i][j], self.PG_estimation[j][i])
-        else:
-            DeltaGamma = self.PG_estimation[j][i]
-        if abs(gammaij - gammaji) > abs(DeltaGamma):
-            return False
-        self.borneMinusRealDeplacement.append(("PiPj", abs(DeltaGamma)- abs(gammaij - gammaji)))
-        return True
+
+
+
+    """
+    All fonction that calculed if a RR is possible for each pair of relations
+    """
 
     def RR_Pji_To_Pij(self,i,j):
         gammaij = self.PG_matrix_gamma[i][j]
         gammaji = self.PG_matrix_gamma[j][i]
-        #borne = self.PG_estimation[i][j] + self.PG_estimation[j][i]
+
         if gammaij > gammaji:
             borne = self.PG_estimation_forPP[i][j]
         elif gammaij == gammaji:
@@ -276,7 +280,6 @@ class PrometheeGamma_rankReversal:
     def RR_Pij_To_Pji(self,i,j):
         gammaij = self.PG_matrix_gamma[i][j]
         gammaji = self.PG_matrix_gamma[j][i]
-        #borne = self.PG_estimation[i][j] + self.PG_estimation[j][i]
 
         if gammaij > gammaji:
             borne = self.PG_estimation_forPP[i][j]
@@ -309,16 +312,6 @@ class PrometheeGamma_rankReversal:
             return True
         return False
 
-    def RR_IJ_oldversion(self, i, j):
-        gammaij=self.PG_matrix_gamma[i][j]
-        gammaji = self.PG_matrix_gamma[j][i]
-        borne=self.PG_estimation[i][j] + self.PG_estimation[j][i]
-        if self.Tj - self.Ti > borne:
-            return False
-        if abs(self.Tj + self.Ti - gammaij - gammaji) > abs(borne):
-            return False
-        self.borneMinusRealDeplacement.append(("IJ", abs(borne) - abs(self.Tj + self.Ti - gammaij - gammaji)))
-        return True
 
 
 
@@ -339,31 +332,6 @@ class PrometheeGamma_rankReversal:
             return True
         return False
 
-    def RR_IPij_version_1(self,i,j):
-        borne = (self.Pf + 1)*self.PG_estimation[i][j]+ self.PG_estimation[j][i]
-        gammaij = self.PG_matrix_gamma[i][j]
-        gammaji = self.PG_matrix_gamma[j][i]
-        if abs(self.Pf * self.Ti - (self.Pf+1)*gammaij+gammaji) > abs(borne):
-            return False
-        self.borneMinusRealDeplacement.append(("IPi", abs(borne) - abs(self.Pf * self.Ti - (self.Pf+1)*gammaij+gammaji)))
-        return True
-
-    def RR_IPij_version_2(self,i,j):
-        borne_droite = (self.PG_estimation[i][j]+ self.PG_estimation[j][i]/(self.Pf + 1))
-        borne_distance = (self.PG_estimation[i][j] + self.PG_estimation[j][i] / (self.Pf + 1)) / math.sqrt((-1) ** 2 + (1 / (self.Pf + 1)) ** 2)
-        gammaij = self.PG_matrix_gamma[i][j]
-        gammaji = self.PG_matrix_gamma[j][i]
-
-        if (abs((self.Pf * self.Ti/(self.Pf + 1)) - gammaij+ gammaji/(self.Pf+1)) <= abs(borne_droite)\
-                and -gammaij/(self.Pf + 1) - gammaji + (1/(self.Pf + 1) + 1)*self.Ti >= 0)\
-                or math.sqrt((gammaij - self.Ti) ** 2 + (gammaji - self.Ti) ** 2) <= borne_distance:
-            self.borneMinusRealDeplacement.append(("IPi", abs(borne_droite) - abs(self.Pf * self.Ti - (self.Pf + 1) * gammaij + gammaji)))
-            return True
-        return False
-
-
-
-
 
 
     def RR_IPji(self,i,j):
@@ -380,32 +348,6 @@ class PrometheeGamma_rankReversal:
         if line.distance(gamma_point) < borne_distance:
             return True
         return False
-
-    def RR_IPji_version_2(self,i,j):
-        borne_droite = (self.PG_estimation[i][j] / (self.Pf + 1) + self.PG_estimation[j][i])
-        borne_distance = borne_droite / math.sqrt((-1) ** 2 + (1 / (self.Pf + 1)) ** 2)
-        gammaij = self.PG_matrix_gamma[i][j]
-        gammaji = self.PG_matrix_gamma[j][i]
-        if (abs((self.Pf * self.Ti / (self.Pf + 1)) + gammaij / (self.Pf + 1) - gammaji) <= abs(borne_droite) \
-            and -gammaij * (self.Pf + 1) - gammaji + (self.Pf + 2) * self.Ti >= 0) \
-                or math.sqrt((gammaij - self.Ti) ** 2 + (gammaji - self.Ti) ** 2) <= borne_distance:
-            self.borneMinusRealDeplacement.append(
-                ("IPi", abs(borne_droite) - abs(self.Pf * self.Ti - (self.Pf + 1) * gammaij + gammaji)))
-            return True
-        return False
-    # -gammaij * (self.Pf + 1) - gammaji + (self.Pf + 2)  * self.Tj <= 0
-    # (abs((self.Pf * self.Tj / (self.Pf + 1)) + gammaij / (self.Pf + 1) - gammaji ) <= abs(borne_droite)
-
-
-    def RR_IPji_version_1(self,i,j):
-        borne =  (self.Pf + 1) * self.PG_estimation[j][i] +self.PG_estimation[i][j]
-        gammaij = self.PG_matrix_gamma[i][j]
-        gammaji = self.PG_matrix_gamma[j][i]
-
-        if abs(self.Pf * self.Ti + gammaij - (self.Pf + 1) * gammaji) > abs(borne):
-            return False
-        self.borneMinusRealDeplacement.append(("IPj", abs(borne)- abs(self.Pf * self.Ti + gammaij - (self.Pf + 1) * gammaji)))
-        return True
 
 
 
@@ -429,28 +371,6 @@ class PrometheeGamma_rankReversal:
             return True
         return False
 
-    def RR_JPij_version_2(self,i,j):
-        borne_droite = self.PG_estimation[i][j]/ (self.Pf + 1) + self.PG_estimation[j][i]
-        borne_distance = borne_droite/ math.sqrt((-1) ** 2 + (1 / (self.Pf + 1)) ** 2)
-        gammaij = self.PG_matrix_gamma[i][j]
-        gammaji = self.PG_matrix_gamma[j][i]
-
-        if (abs((self.Pf * self.Tj / (self.Pf + 1)) + gammaij / (self.Pf + 1) - gammaji ) <= abs(borne_droite) \
-            and -gammaij * (self.Pf + 1) - gammaji + (self.Pf + 2)  * self.Tj <= 0) \
-                or math.sqrt((gammaij - self.Tj) ** 2 + (gammaji - self.Tj) ** 2) <= borne_distance:
-            return True
-        return False
-
-    def RR_JPij_version_1(self,i,j):
-        gammaij = self.PG_matrix_gamma[i][j]
-        gammaji = self.PG_matrix_gamma[j][i]
-        borne = (self.Pf + 1) * self.PG_estimation[j][i] + self.PG_estimation[i][j]
-
-        if abs(self.Pf * self.Tj +  gammaij - (self.Pf + 1) * gammaji) > abs(borne):
-            return False
-        self.borneMinusRealDeplacement.append(("JPi", abs(borne)- abs(self.Pf * self.Tj +  gammaij - (self.Pf + 1) * gammaji)))
-        return True
-
 
 
 
@@ -469,37 +389,6 @@ class PrometheeGamma_rankReversal:
             return True
         return False
 
-    def RR_JPji_version_2(self,i,j):
-        borne_droite = self.PG_estimation[i][j] + self.PG_estimation[j][i] / (self.Pf + 1)
-        borne_distance = (self.PG_estimation[i][j] + self.PG_estimation[j][i] / (self.Pf + 1)) / math.sqrt((-1) ** 2 + (1 / (self.Pf + 1)) ** 2)
-        gammaij = self.PG_matrix_gamma[i][j]
-        gammaji = self.PG_matrix_gamma[j][i]
-
-
-        if (abs((self.Pf * self.Tj / (self.Pf + 1)) - gammaij + gammaji / (self.Pf + 1)) < abs(borne_droite) \
-            and -gammaij / (self.Pf + 1) - gammaji + (1 / (self.Pf + 1) + 1) * self.Tj <= 0) \
-                or math.sqrt((gammaij - self.Tj) ** 2 + (gammaji - self.Tj) ** 2) <= borne_distance:
-            self.borneMinusRealDeplacement.append(("IPi", abs(borne_droite) - abs(self.Pf * self.Ti - (self.Pf + 1) * gammaij + gammaji)))
-            return True
-
-        return False
-
-
-    def RR_JPji_version_1(self,i,j):
-        borne = (self.Pf + 1) * self.PG_estimation[i][j]+ self.PG_estimation[j][i]
-        gammaij = self.PG_matrix_gamma[i][j]
-        gammaji = self.PG_matrix_gamma[j][i]
-        if abs(self.Pf * self.Tj - (self.Pf + 1) * gammaij + gammaji) > abs(borne):
-            return False
-        self.borneMinusRealDeplacement.append(
-            ("JPj", abs(borne) -abs(self.Pf * self.Tj - (self.Pf + 1) * gammaij + gammaji)))
-        return True
 
 
 
-
-
-    def reset(self):
-        """Reset the model
-        """
-        pass
